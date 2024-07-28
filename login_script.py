@@ -17,29 +17,17 @@ def format_to_iso(date):
 async def delay_time(ms):
     await asyncio.sleep(ms / 1000)
 
-# 全局浏览器实例
-browser = None
-
-# telegram消息
-message = 'serv00&ct8自动化脚本运行\n'
-
 async def login(username, password, panel):
-    global browser
-
-    page = None  # 确保 page 在任何情况下都被定义
     serviceName = 'ct8' if 'ct8' in panel else 'serv00'
     try:
-        if not browser:
-            browser = await launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
-
         page = await browser.newPage()
         url = f'http://{panel}/login/?next=/'
         await page.goto(url)
 
-        username_input = await page.querySelector('#id_username')
-        if username_input:
-            await page.evaluate('''(input) => input.value = ""''', username_input)
+        # 等待页面加载完成
+        await page.waitForSelector('#id_username', {'timeout': 10000})
 
+        await page.evaluate('''(input) => input.value = ""''', await page.querySelector('#id_username'))
         await page.type('#id_username', username)
         await page.type('#id_password', password)
 
@@ -63,8 +51,7 @@ async def login(username, password, panel):
         return False
 
     finally:
-        if page:
-            await page.close()
+        await page.close()
 
 async def main():
     global message
@@ -77,6 +64,9 @@ async def main():
     except Exception as e:
         print(f'读取 accounts.json 文件时出错: {e}')
         return
+
+    global browser
+    browser = await launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
 
     for account in accounts:
         username = account['username']
@@ -98,7 +88,9 @@ async def main():
 
         delay = random.randint(1000, 8000)
         await delay_time(delay)
-        
+    
+    await browser.close()
+
     message += f'所有{serviceName}账号登录完成！'
     await send_telegram_message(message)
     print(f'所有{serviceName}账号登录完成！')
@@ -130,4 +122,7 @@ async def send_telegram_message(message):
         print(f"发送消息到Telegram时出错: {e}")
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        print(f"RuntimeError: {e}")
