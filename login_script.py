@@ -33,7 +33,7 @@ async def login(username, password, panel):
             browser = await launch(headless=True, args=['--no-sandbox', '--disable-setuid-sandbox'])
 
         page = await browser.newPage()
-        url = f'https://{panel}/login/?next=/'
+        url = f'http://{panel}/login/?next=/'
         await page.goto(url)
 
         username_input = await page.querySelector('#id_username')
